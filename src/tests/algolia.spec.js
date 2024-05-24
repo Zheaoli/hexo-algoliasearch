@@ -2,7 +2,7 @@ import algoliaCommand, {
   getBasicFields,
   getFieldsWithFilters,
   pick,
-  preparePosts,
+  prepareContents,
   splitIntoChunks,
   upperFirst
 } from '../algolia'
@@ -85,14 +85,14 @@ describe('algolia', () => {
 
     it('should return a list of posts with only their title', () => {
       const posts = [createPost(1), createPost(2), createPost(3)]
-      const preparedPosts = preparePosts(posts, ['title', 'content'], [])
+      const preparedPosts = prepareContents(posts, ['title', 'content'], [])
       expect(preparedPosts).toMatchSnapshot()
     })
 
     it('should return a list of posts with the specified fields with filters', function() {
       const posts = [createPost(1), createPost(2), createPost(3)]
       const fieldWithFilters = ['content:strip:truncate,0,5', 'title:truncate,5,10']
-      const preparedPosts = preparePosts(posts, ['title'], fieldWithFilters)
+      const preparedPosts = prepareContents(posts, ['title'], fieldWithFilters)
       expect(preparedPosts).toMatchSnapshot()
     })
 
@@ -100,7 +100,7 @@ describe('algolia', () => {
       const posts = [createPost(1), createPost(2), createPost(3)]
       const fields = ['title', 'tags', 'categories']
       const fieldWithFilters = ['content:strip:truncate,0,5', 'title:truncate,5,10']
-      const preparedPosts = preparePosts(posts, fields, fieldWithFilters)
+      const preparedPosts = prepareContents(posts, fields, fieldWithFilters)
       expect(preparedPosts).toMatchSnapshot()
     })
 
@@ -108,7 +108,7 @@ describe('algolia', () => {
       global.hexo = {log: {warn: jest.fn()}}
       const posts = [createPost(1)]
       const fields = ['unknownField', 'title']
-      const preparedPosts = preparePosts(posts, fields, fields)
+      const preparedPosts = prepareContents(posts, fields, fields)
       expect(preparedPosts).toMatchSnapshot()
       expect(hexo.log.warn).toHaveBeenCalledWith(`"${posts[0].title}" post has no "unknownField" field.`)
     })
@@ -117,7 +117,7 @@ describe('algolia', () => {
       const posts = [createPost(1), createPost(2), createPost(3)]
       const fields = ['title', 'tags', 'categories']
       const fieldWithFilters = ['content:strip:truncate,0,5', 'title:truncate,5,10']
-      const preparedPosts = preparePosts(posts, fields, fieldWithFilters)
+      const preparedPosts = prepareContents(posts, fields, fieldWithFilters)
       expect(preparedPosts).toMatchSnapshot()
     })
   })

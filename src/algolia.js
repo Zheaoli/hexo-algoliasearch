@@ -54,24 +54,24 @@ export const splitIntoChunks = (array, chunkSize) => {
 /**
  * Pick speficied fields of posts
  *
- * @param {Object} posts - The posts to prepare
+ * @param {Object} contents - The posts to prepare
  * @param {Array} fields - The fields of the posts to select
  * @param {Array} fieldsWithFilters - The fields of the posts to select
  * @returns {Object} posts - The posts ready to be indexed
  */
-export const preparePosts = (posts, fields, fieldsWithFilters) => {
+export const prepareContents = (contents, fields, fieldsWithFilters) => {
   const tagsAndCategoriesFields = ['tags', 'categories'].filter((field) => fields.includes(field))
 
-  return posts.map((initialPost) => {
-    const postToIndex = pick(initialPost, fields)
+  return contents.map((initialContent) => {
+    const contentToIndex = pick(initialContent, fields)
     // define a unique ID to identfy this post on Algolia
-    postToIndex.objectID = initialPost._id
+    contentToIndex.objectID = initialContent._id
 
     // extract tags and categories
     tagsAndCategoriesFields.forEach((field) => {
-      postToIndex[field] = []
-      initialPost[field].data.forEach(function(fieldElement) {
-        postToIndex[field].push(fieldElement.name)
+      contentToIndex[field] = []
+      initialContent[field].data.forEach(function(fieldElement) {
+        contentToIndex[field].push(fieldElement.name)
       })
     })
 
@@ -81,12 +81,12 @@ export const preparePosts = (posts, fields, fieldsWithFilters) => {
       const fieldFilters = field.split(':')
       const fieldName = fieldFilters.shift()
 
-      if (!initialPost.hasOwnProperty(fieldName)) {
-        hexo.log.warn(`"${initialPost.title}" post has no "${fieldName}" field.`)
+      if (!initialContent.hasOwnProperty(fieldName)) {
+        hexo.log.warn(`"${initialContent.title}" post has no "${fieldName}" field.`)
         return
       }
 
-      let fieldValue = initialPost[fieldName]
+      let fieldValue = initialContent[fieldName]
 
       fieldFilters.forEach(function(filter) {
         const filterArgs = filter.split(',')
@@ -99,10 +99,10 @@ export const preparePosts = (posts, fields, fieldsWithFilters) => {
       })
 
       // store filter result in post object
-      postToIndex[fieldName + indexedFieldName.join('')] = fieldValue
+      contentToIndex[fieldName + indexedFieldName.join('')] = fieldValue
     })
 
-    return postToIndex
+    return contentToIndex
   })
 }
 
@@ -125,8 +125,10 @@ export const getFieldsWithFilters = fields => fields.filter((field) => /:/.test(
 
 const algoliaCommand = async(hexo, args, callback) => {
   const algoliaConfig = hexo.config.algolia
-  const fields = getBasicFields(algoliaConfig.fields)
-  const fieldsWithFilters = getFieldsWithFilters(algoliaConfig.fields)
+  const postFields = getBasicFields(algoliaConfig.fields.post_fields)
+  const postFieldsWithFilters = getFieldsWithFilters(algoliaConfig.fields.post_fields)
+  const pageFields = getBasicFields(algoliaConfig.fields.page_fields)
+  const pageFieldsWithFilters = getFieldsWithFilters(algoliaConfig.fields.page_fields)
   const algoliaAppId = process.env.ALGOLIA_APP_ID || algoliaConfig.appId
   const algoliaAdminApiKey = process.env.ALGOLIA_ADMIN_API_KEY || algoliaConfig.adminApiKey
   const algoliaIndexName = process.env.ALGOLIA_INDEX_NAME || algoliaConfig.indexName
@@ -142,9 +144,15 @@ const algoliaCommand = async(hexo, args, callback) => {
     hexo.log.info('There is no post to index.')
     return callback()
   }
-  posts = preparePosts(posts, fields, fieldsWithFilters)
+  posts = prepareContents(posts, postFields, postFieldsWithFilters)
 
-  const chunkedPosts = splitIntoChunks(posts, algoliaChunkSize)
+  let pages = hexo.database.model('Page').find({}).sort('date', 'asc').toArray()
+
+  pages = prepareContents(pages, pageFields, pageFieldsWithFilters)
+
+  let contents = posts.concat(pages)
+
+  const chunkedContents = splitIntoChunks(contents, algoliaChunkSize)
   const algoliaClient = algoliasearch(algoliaAppId, algoliaAdminApiKey)
   const algoliaIndex = algoliaClient.initIndex(algoliaIndexName)
 
@@ -162,7 +170,7 @@ const algoliaCommand = async(hexo, args, callback) => {
 
   hexo.log.info('Indexing posts on Algolia...')
   try {
-    await Promise.all(chunkedPosts.map((posts) => algoliaIndex.saveObjects(posts)))
+    await Promise.all(chunkedContents.map((content) => algoliaIndex.saveObjects(content)))
   }
   catch (error) {
     hexo.log.info(`Error has occurred during indexing posts : ${error}`)
