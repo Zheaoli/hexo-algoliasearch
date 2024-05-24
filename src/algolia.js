@@ -176,7 +176,7 @@ const algoliaCommand = async(hexo, args, callback) => {
     hexo.log.info(`Error has occurred during indexing posts : ${error}`)
     return callback(error)
   }
-  hexo.log.info(`${posts.length} posts indexed.`)
+  hexo.log.info(`${contents.length} posts indexed.`)
 }
 
 export default algoliaCommand
